@@ -3,6 +3,7 @@
 This readme will get updated soon and a short wiki will follow...
 
 To use the API just drop the files GUI.lua and shapes_default.lua to your preffered lib folder e.g. /lib/
+
 To see the tech_demo put the tech_demo.lua anywhere and run it (at the moment it does not demonstrate all features).
 
 You can read more update it and its features here: http://oc.cil.li/index.php?/topic/580-gui-api-064beta
