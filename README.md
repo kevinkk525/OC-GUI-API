@@ -21,14 +21,16 @@ Main features:
 Changelog:
 --------------------------------------------------------------------
 Until 0.6.4b:
+
 - shapes: rect_full,label,labelbox (labelbox=rect_full with referenced label and expanded function range)
 - object functions: move, resize, toPosition, setClickEvent, removeClickEvent, setFCol, setBCol, setText, addReference, changeLayer, remove
 - object orientation, layer support, dynamic updates, referencing system, clickEvents, global default color system, different ram/screen optimizations
---------------------------------------------------------------------
 
---------------------------------------------------------------------
+
 Version 0.7.0b:
+
 - added shapes (listing)
 - added support for scroll events
 - modified shapes to support scroll events (label,labelbox,listing)
---------------------------------------------------------------------
+
+
