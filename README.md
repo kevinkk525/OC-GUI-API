@@ -1,7 +1,10 @@
 # OC-GUI-API
 GUI-API for OpenComputers with dynamic object updates and interaction
 
-This readme will get updated soon.
+This readme will get updated soon and a short wiki will follow...
+
+To use the API just drop the files GUI.lua and shapes_default.lua to your preffered lib folder e.g. /lib/
+To see the tech_demo put the tech_demo.lua anywhere and run it (at the moment it does not demonstrate all features).
 
 Main features:
 - Object oriented programming: myLabel=g.label(x,y,rx,ry,....), myLabel.move(1,1),...
