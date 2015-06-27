@@ -1,17 +1,17 @@
 ---config section
-local version="0.7.0b"
+local version="0.7.2b"
 local author="kevinkk525"
 local scrollLines=1
 ----
 local unicode=require("unicode")
 local colors=require("colors")
-local term=require("term")
 local s={} --all shapes
 local g --reference to GUI-API
 
 -- Never use floats as coordinates!
 -- Unlike the examples add custom/modified functions below the r={...} so you can update these blocks easily! same for self={}
-
+--7.1b: fcol/bcol for each line in listing, bugfix in textbox, added textbox (if works)
+-- don't try textboxes input in lua-interactive, not working there
 
 ------ local functions
 function s.init(GUI) --gets removed on import
@@ -165,7 +165,7 @@ function s.label(x,y,rx,ry,layer,fcol,bcol,clickEvent,add,text,...) --maybe add 
                         end
                         j=j+k
                     else
-                        if self.y+i-1>=y and self.y+i-1<=y+ry and i>=self.textLine then
+                        if self.y+i-self.textLine>=y and self.y+i-self.textLine<=y+ry and i>=self.textLine then
                             set(self.x+x-self.x,self.y+i-self.textLine,0,0,unicode.sub(t,1+x-self.x,1+x-self.x+rx),self.bcol,self.fcol)
                         end
                         j=j+self.rx+1
@@ -174,13 +174,12 @@ function s.label(x,y,rx,ry,layer,fcol,bcol,clickEvent,add,text,...) --maybe add 
                     break
                 end
             end
-            j=j-self.rx
-            if j>=unicode.len(self.text) then
+            if j-1>=unicode.len(self.text) then
                 self.textflag=true
             else
                 self.textflag=false
             end
-            if j>=unicode.len(self.text) and self.textLine==1 then
+            if j-1>=unicode.len(self.text) and self.textLine==1 then
                 if self.autoScroll then
                     self.scrollEvent=nil
                 end
@@ -242,6 +241,7 @@ function s.label(x,y,rx,ry,layer,fcol,bcol,clickEvent,add,text,...) --maybe add 
     ["setScrollEvent"]=function(f) self.scrollEvent=f end,["removeScrollEvent"]=function() self.scrollEvent=nil end,
     ["getTextLine"]=function(flag) if flag then return self.textflag else return self.textLine end end,["setTextLine"]=function(line) self.textLine=line end}
     r["setAutoScroll"]=function(i) if type(i)~="boolean" then return false,"parameter has to be boolean" end self.autoScroll=i end
+    r["debug"]=function() return self end
     for a,b in pairs(g.objectFunctions()) do
         r[a]=b
     end
@@ -315,8 +315,8 @@ function s.listing(x,y,rx,ry,layer,fcol,bcol,clickEvent,add,text) --maybe add st
     end
     local self={["x"]=x,["y"]=y,["rx"]=rx,["ry"]=ry,["fcol"]=fcol,["bcol"]=bcol,["scrollEvent"]=nil,["textflag"]=nil,
     ["id"]=randID(),["layer"]=layer,["coords"]=nil,["clickEvent"]=clickEvent,["text"]=nil,["textLine"]=1} --coords added in expansion, textflag==true --> last line printed
-    self["tltab"]={}
-    self.text=text self.textlines=0 self.autoScroll=true
+    self["tltab"]={} self.fcol={[0]=fcol} self.bcol={[0]=bcol}
+    self.text=text self.textlines=0 self.autoScroll=true 
     if text then for i=1,1000 do if text[i] then self.textlines=self.textlines+1 end end end
     
     local r --object
@@ -343,8 +343,22 @@ function s.listing(x,y,rx,ry,layer,fcol,bcol,clickEvent,add,text) --maybe add st
         end
     end
     ---
+    local function fcol(line)
+        if self.fcol[line] then
+            return self.fcol[line]
+        else
+            return self.fcol[0]
+        end
+    end
+    local function bcol(line)
+        if self.bcol[line] then
+            return self.bcol[line]
+        else 
+            return self.bcol[0]
+        end
+    end
     
-    update=function(x,y,rx,ry,clean)
+    update=function(x,y,rx,ry,clean) 
         if self.text then 
             self.tltab={}
             x=x or self.x y=y or self.y rx=rx or self.rx ry=ry or self.ry
@@ -361,53 +375,71 @@ function s.listing(x,y,rx,ry,layer,fcol,bcol,clickEvent,add,text) --maybe add st
                                 local t=unicode.sub(self.text[line],j,j+self.rx)
                                 local k=t:find("\n")
                                 if k then
-                                    if i>=self.textLine then
-                                        if self.y+i-self.textLine>=y and self.y+i-self.textLine<=y+ry then
-                                            if j==1 or j==2 then
-                                                local output=start_elem.." "
-                                                output=output..unicode.sub(self.text[line],j,j+k-2)
+                                    if self.y+i-self.textLine<=y+ry then
+                                        if j==1 or j==2 then
+                                            local output=start_elem.." "
+                                            output=output..unicode.sub(self.text[line],j,j+k-2)
+                                            if i>=self.textLine then
                                                 if not clean then
-                                                    set(self.x+x-self.x,self.y+i-self.textLine,0,0,unicode.sub(output,1+x-self.x,1+x-self.x+rx),self.bcol,self.fcol)
+                                                    set(self.x+x-self.x,self.y+i-self.textLine,0,0,unicode.sub(output,1+x-self.x,1+x-self.x+rx),bcol(line),fcol(line))
                                                 else
                                                     fill(self.x+x-self.x,self.y+i-self.textLine,unicode.len(unicode.sub(output,1+x-self.x,1+x-self.x+rx))-1,0," ")--,self.bcol,self.fcol)
-                                                end    
-                                                output=nil
-                                            else
+                                                end
+                                                self.tltab[i-self.textLine+1]=line
+                                                if line==self.textlines and j+k-1>=unicode.len(self.text[line]) then
+                                                    self.tltab[0]=1
+                                                end
+                                            end
+                                            output=nil
+                                        else
+                                            if i>=self.textLine then
                                                 if not clean then
-                                                    set(self.x+x-self.x,self.y+i-self.textLine,0,0,unicode.sub(unicode.sub(self.text[line],j,j+k-2),1+x-self.x,1+x-self.x+rx),self.bcol,self.fcol)
+                                                    set(self.x+x-self.x,self.y+i-self.textLine,0,0,unicode.sub(unicode.sub(self.text[line],j,j+k-2),1+x-self.x,1+x-self.x+rx),bcol(line),fcol(line))
                                                 else
                                                     fill(self.x+x-self.x,self.y+i-self.textLine,unicode.len(unicode.sub(unicode.sub(self.text[line],j,j+k-2),1+x-self.x,1+x-self.x+rx))-1,0," ")--,self.bcol,self.fcol)
-                                                end    
+                                                end
+                                                self.tltab[i-self.textLine+1]=line
+                                                if line==self.textlines and j+k-1>=unicode.len(self.text[line]) then
+                                                    self.tltab[0]=1
+                                                end
                                             end
                                         end
                                     end
-                                    self.tltab[i-self.textLine+1]=line
                                     j=j+k
                                     i=i+1
                                 else
                                     local offs=0
-                                    if i>=self.textLine then
-                                        if self.y+i-self.textLine>=y and self.y+i-self.textLine<=y+ry then
-                                            if j==1 or j==2 then
+                                    if self.y+i-self.textLine<=y+ry then
+                                        if j==1 or j==2 then
+                                            if i>=self.textLine then                                        
                                                 local output=start_elem.." "
                                                 output=output..t
                                                 if not clean then
-                                                    set(self.x+x-self.x,self.y+i-self.textLine,0,0,unicode.sub(output,1+x-self.x,1+x-self.x+rx),self.bcol,self.fcol)
+                                                    set(self.x+x-self.x,self.y+i-self.textLine,0,0,unicode.sub(output,1+x-self.x,1+x-self.x+rx),bcol(line),fcol(line))
                                                 else
                                                     fill(self.x+x-self.x,self.y+i-self.textLine,unicode.len(unicode.sub(output,1+x-self.x,1+x-self.x+rx))-1,0," ")--,self.bcol,self.fcol)
                                                 end
                                                 output=nil
-                                                offs=2
-                                            else
+                                                self.tltab[i-self.textLine+1]=line
+                                                if line==self.textlines and j+self.rx-offs>=unicode.len(self.text[line]) then
+                                                    self.tltab[0]=1
+                                                end
+                                            end
+                                            offs=2
+                                        else
+                                            if i>=self.textLine then
                                                 if not clean then
-                                                    set(self.x+x-self.x,self.y+i-self.textLine,0,0,unicode.sub(t,1+x-self.x,1+x-self.x+rx),self.bcol,self.fcol)
+                                                    set(self.x+x-self.x,self.y+i-self.textLine,0,0,unicode.sub(t,1+x-self.x,1+x-self.x+rx),bcol(line),fcol(line))
                                                 else
-                                                    fill(self.x+x-self.x,self.y+i-self.textLine,unicode.len(unicode.sub(t,1+x-self.x,1+x-self.x+rx))-1,0," ")--,self.bcol,self.fcol)
-                                                end    
+                                                    fill(self.x+x-self.x,self.y+i-self.textLine,unicode.len(unicode.sub(t,1+x-self.x,1+x-self.x+rx))-1,0," ")
+                                                end
+                                                self.tltab[i-self.textLine+1]=line
+                                                if line==self.textlines and j+self.rx-offs>=unicode.len(self.text[line]) then
+                                                    self.tltab[0]=1
+                                                end
                                             end
                                         end
-                                    end
-                                    self.tltab[i-self.textLine+1]=line
+                                    end                                    
                                     j=j+self.rx+1-offs
                                     i=i+1
                                 end
@@ -420,30 +452,17 @@ function s.listing(x,y,rx,ry,layer,fcol,bcol,clickEvent,add,text) --maybe add st
                     break
                 end
             end
-            if self.tltab[#self.tltab]==self.textlines then --test autoscroll
-                local p=0
-                for i=#self.tltab,1,-1 do
-                    if self.tltab[i]==self.tltab[#self.tltab] then
-                        p=p+1
-                    else
-                        break
-                    end
-                end
-                if unicode.len(self.text[self.textlines])<=p*self.rx+1 then
-                    self.textflag=true
-                    if self.textLine~=1 and self.autoScroll then
-                       self.scrollEvent=function(x,y,direction,user) scrollText(r,direction) end 
-                    else
-                        self.scrollEvent=nil
-                    end
-                else
-                    if self.autoScroll then
-                       self.scrollEvent=function(x,y,direction,user) scrollText(r,direction) end 
-                    end
-                    self.textflag=nil
-                end
+            if self.tltab[0] then
+                self.textflag=true
             else
                 self.textflag=nil
+            end
+            if self.autoScroll then
+                if self.tltab[0] and self.textLine==1 then
+                    self.scrollEvent=nil
+                else
+                    self.scrollEvent=function(x,y,direction,user) scrollText(r,direction) end 
+                end
             end
         end
     end
@@ -476,13 +495,90 @@ function s.listing(x,y,rx,ry,layer,fcol,bcol,clickEvent,add,text) --maybe add st
     r["getText"]=function(i) if not i then return self.text end return self.text[i] end
     r["removeText"]=function(i) if i then self.text[i]=nil self.textlines=self.textlines-1 else self.text=nil self.textlines=0 end end
     r["setText"]=function(i,text,...) if not i or type(i)=="string" then return false,"no line specified" elseif type(text)=="table" then cleanText() self.text=text self.textlines=0 for i=1,1000 do if self.text[i] then self.textlines=self.textlines+1 end end else cleanText(nil,nil,nil,nil,i) if not self.text then self.text={} end if not self.text[i] then self.textlines=self.textlines+1 end self.text[i]=text:format(...) end g.update(self.id) end
+    r["removeText"]=function(i) if type(i)=="number" then self.text[i]=nil else return false,"must be number" end end
     r["setAutoScroll"]=function(i) if type(i)~="boolean" then return false,"parameter has to be boolean" end self.autoScroll=i end
+    r["getFCol"]=function(i) i=i or 0 return self.fcol[i] end r["getBCol"]=function(i) i=i or 0 return self.bcol[i] end 
+    r["setFCol"]=function(col,i,up) i=i or 0 self.fcol[i]=col if i==0 then ref("setFCol",col,true) end if not up then g.update(self.id,self.layer) end end
+    r["setBCol"]=function(col,i,up) i=i or 0 self.bcol[i]=col if i==0 then ref("setBCol",col,true) end if not up then g.update(self.id,self.layer) end end
     r["debug"]=function() return self end
     for a,b in pairs(g.objectFunctions()) do
         r[a]=b
     end
     --
     g.addObject(r,up,add) --adds pointer to object functions for interaction with GUI
+    return r
+end
+
+function s.textbox(x,y,rx,ry,layer,fcol,bcol,clickEvent,add,text) --maybe add style: center,left,right...,add dynamic w,h based on text?,line break word based?,bug: \n after line break because of rx
+    --------------------------
+    -- this part can be copied to any shape and expanded like below
+    --------------------------
+    layer=layer or g.getHighestLayer()+1
+    local self={["password"]=nil,["text"]=text,["clickEvent"]=clickEvent} --custom self
+    
+    local r=g.rect_full(x,y,rx,ry,layer,fcol,bcol,clickEvent,true)
+    local show_rect=r.show
+    local update_r=r.update
+    local up
+    local references={}
+    local function ref(fc,...) for i=1,#references do if references[i][fc]~=nil then references[i][fc](...) end end end
+    local set=function(x,y,rx,ry,text,bcol,fcol) g.set(x,y,rx,ry,self.layer,text,self.id,bcol,fcol) end
+    local fill=function(x,y,rx,ry,text,bcol,fcol) g.fill(x,y,rx,ry,self.layer,text,self.id,bcol,fcol) end
+    local update --dynamic range update - only add function in function area if you use it --> highly suggested to be implemented
+    local updateCoords --only add function in function area if you use it
+    local show --always define this
+    local cleanText --custom function
+    local color_offset=0x040404
+    ------ 
+    
+    ------
+    --object functions
+    ------
+    show=function(up) --must be implement in similar way in every function (keep frame)
+    ------ modify between
+        update()
+    ------
+        if not up then
+            g.update(self.id,self.layer+1)
+        end
+    end
+    ---
+    fill=function(x,y,rx,ry,text,bcol,fcol) g.fill(x,y,rx,ry,r.getLayer(),text,r.getID(),bcol,fcol) end
+    set=function(x,y,rx,ry,text,bcol,fcol) g.set(x,y,rx,ry,r.getLayer(),text,r.getID(),bcol,fcol) end
+    
+    update=function(x,y,rx,ry)
+        update_r(x,y,rx,ry)
+        x=x or r.getX() y=y or r.getY() rx=rx or r.getRX() ry=ry or r.getRY()
+        ry=0
+        if y==r.getY() and r.getRY()>0 then y=y+1 end
+        if x+rx==r.getX()+r.getRX() and r.getRX()>1 then rx=rx-1 end
+        if x==r.getX() and r.getRX()>1 then x=x+1 end
+        local color=r.getBCol()
+        if color then color=color-color_offset end
+        fill(x,y,rx,ry," ",color,nil) --did not work because of gui.fill not working without layer and id
+        if self.text then
+            set(x,y,0,0,unicode.sub(self.text,1,rx),color,r.getFCol()) --check rx or rx+1?
+        end
+    end
+    
+    cleanText=function(x,y,rx,ry) --clean text by updating rect_full in that area
+        update_r(x,y,rx,ry)
+    end
+    -------
+    --function table, copy to your new shape and modify/expand if needed
+    r.setClickEvent=function(f) self.clickEvent=f end
+    r.clickEvent=function(x,y,button,user,test) if test then if self.clickEvent~=nil then return true end return false end local yt=r.getY() if r.getRY()>1 then yt=yt+1 end local xt=r.getX() if r.getRX()>1 then xt=xt+1 end g.setCursor(r.getX()+1,yt) g.setCursorBlink(true) self.text=g.read(nil,false,nil,self.password,r.getFCol(),r.getBCol()-color_offset) 
+    self.text=unicode.sub(self.text,1,unicode.len(self.text)-1) g.setCursorBlink(false) self.clickEvent(x,y,button,user,self.text) end
+    r.removeClickEvent=function() self.clickEvent=nil end
+    r.setText=function(text,...) cleanText() self.text=text:format(...) g.update(self.id) end
+    r.getText=function() return self.text end
+    r.password=function(b) if type(b)~="boolean" then return false,"parameter must be boolean" end if b then self.password='*' else self.password=nil end end
+    r["cleanTextArea"]=cleanText
+    r.update=update
+    r.show=show
+    --
+    g.addObject(r,up,add) --adds pointer to object functions for interaction with GUI
+    up=nil
     return r
 end
 
