@@ -1,5 +1,5 @@
 --- config section
-local version="0.7.0b"
+local version="0.7.2b"
 local author="kevinkk525"
 local back_color_std=0x000000
 local fore_color_std=0xFFFFFF
@@ -8,6 +8,7 @@ local hook_as_permanent=true --only for req_handler, ignore
 
 local component=require("component")
 local term=require("term")
+local term_read=require("term_mod") --modified term.read function preventing line shifting
 local text=require("text")
 local unicode=require("unicode")
 local colors=require("colors")
@@ -344,6 +345,7 @@ function g.initialize(hook,back_color,fore_color,req_priority)
     back_color_std=back_color or back_color_std 
     fore_color_std=fore_color or fore_color_std
     term.setCursorBlink(false)
+    term.clear()
     g.initShapes("shapes_default")
     event.listen("touch",g.event)
     event.listen("scroll",g.event)
@@ -551,7 +553,6 @@ function g.set(x,y,rx,ry,layer,text,ref,bcol,fcol)
     end
     text=text or " "
     layer=layer or g.getHighestLayer(x,y,rx,ry)
-    local ref_text=getCoordsIndex(x,y)
     local w,h=g.getResolution()
     local add=true
     if x>w or y>h then
@@ -598,7 +599,6 @@ function g.fill(x,y,rx,ry,layer,text,ref,bcol,fcol)
     end
     text=text or " "
     layer=layer or g.getHighestLayer(x,y,rx,ry)
-    local ref_text=getCoordsIndex(x,y)
     local w,h=g.getResolution()
     local add=true
     if x>w or y>h then
@@ -657,5 +657,9 @@ function g.getLayerStatus(x,y,rx,ry,layer) --not used by any function
     end
     return true
 end
+
+function g.read(history,dobreak,hint,pwchar,fcol,bcol) return term_read(history,dobreak,hint,pwchar,fcol,bcol,fore_color_std,back_color_std) end
+function g.setCursorBlink(bool) term.setCursorBlink(bool) end
+function g.setCursor(x,y) term.setCursor(x,y) end
 
 return g
