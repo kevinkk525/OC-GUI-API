@@ -13,6 +13,14 @@ Changelog:
 --------------------------------------------------------------------
 
 
+Version 0.7.2b (June 15):
+----------------------------------------
+- added a textbox shape (finally an input method)
+- several bugfixes for listings and labels and scrolling feature
+- added a file with modified term.read function preventing shifts in input line and supporting color system.
+- new feature: configure color per line in listing shape
+
+
 Version 0.7.0b:
 ----------------------------------------
 - added shapes (listing)
