@@ -12,6 +12,11 @@ You can read more update it and its features here: http://oc.cil.li/index.php?/t
 Changelog:
 --------------------------------------------------------------------
 
+Version 0.7.3b (August 11):
+----------------------------------------
+- code changes to remove redundancy and minimize code lines
+- minor bugfixes
+
 
 Version 0.7.2b (June 15):
 ----------------------------------------
