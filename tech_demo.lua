@@ -1,5 +1,5 @@
 ---tech demo for GUI-API
-local version="0.3b"
+local version="0.7.3b"
 local author="kevinkk525"
 ---
 
@@ -31,11 +31,12 @@ local function layerDown2() test2.move(nil,nil,-1) showl2.setText("Layer blue:  
 local function exitGUI() running=false end
 local function chgFCol() g.setStdForeColor(0xFF0000) end
 local function chgStdCol() g.setStdForeColor(0xFFFFFF) end
+local function textoutput(x,y,button,user,text) textoutput_shape.setText(text) end
 
 g.show()
 
 welcome=g.label(math.floor(w/3),2,math.floor(w/3),4,nil,nil,nil,nil,nil,"Welcome to the tech demo of my GUI-API!\nI hope you enjoy it and get a taste of its potential,\nwell it is still beta..\ncould kill penguins, burn your house etc...:D")
-features=g.labelbox(2,8,w-4,9,101,nil,0x00AAFF,nil,nil,"Some general features in beta:\nObject oriented, Layer support, Reference system\n\nSo in understandable words:\nYou can move objects, resize objects, change their layer, bind a text to a rect so they move and resize together,...\n\nCurrently added shapes:\nRect, Label, Labelbox\nThe Community is encouraged to contribute shapes!")
+features=g.labelbox(2,8,w-4,9,101,nil,0x00AAFF,nil,nil,"Some general features in beta:\nObject oriented, Layer support, Reference system\n\nSo in understandable words:\nYou can move objects, resize objects, change their layer, bind a text to a rect so they move and resize together,...\n\nCurrently added shapes:\nRect, Label, Labelbox, Listing, Textbox (working, but has some glitches)\nThe Community is encouraged to contribute shapes!")
 counter=g.label(w-20,1,20,1,101,nil,nil,nil,nil,"Current uptime: %i",computer.uptime()-start_time)
 click_counter=g.label(w-20,2,20,0,101,nil,nil,nil,nil,"Clickcounter: %i",clickcount)
 clickbox=g.labelbox(w/2-5,20,10,2,101,nil,0xFFAA00,incCount,nil,"Click me!")
@@ -61,12 +62,13 @@ local t="change foreground color to "
 local f="0xFF0000"
 changeFCol=g.labelbox(3,20,16,1,101,nil,0xFFAAFF,chgFCol,nil,t..f)
 changeStdCol=g.labelbox(3,23,16,1,101,nil,0xFFAAFF,chgStdCol,nil,t.."standard")
+scrollbox=g.listing(w-10,30,8,4,101,nil,0x00FFAA,nil,nil,{"Scroll me!","This is a long text so you can test the scrolling feature","And to show you the listing shape"})
+textinput=g.textbox(w-10,36,8,4,101,nil,0xFFAA00,textoutput,nil,"insert text")
+textoutput_shape=g.labelbox(w-10,42,8,5,101,nil,0xFF00AA,nil,nil,"input will be here")
 
 while running do
     counter.setText("Current uptime: %i",computer.uptime()-start_time)
-
     os.sleep(0.7)
 end
 g.stopGUI()
 os.exit()
-
