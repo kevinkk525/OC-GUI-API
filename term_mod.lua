@@ -7,6 +7,7 @@ local unicode = require("unicode")
 local term=require("term")
 
 --modified version of term.read preventing line shifts and supporting color system of GUI-API
+--not perfect, just a temporary solution
 
 local function read_mod(history, dobreak, hint, pwchar, filter,fcol,fcol,bcol_std,bcol_std)
   checkArg(1, history, "table", "nil")
