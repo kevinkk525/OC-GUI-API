@@ -1,5 +1,5 @@
 ---config section
-local version="0.7.2b"
+local version="0.7.3b"
 local author="kevinkk525"
 local scrollLines=1
 ----
@@ -9,8 +9,8 @@ local s={} --all shapes
 local g --reference to GUI-API
 
 -- Never use floats as coordinates!
--- Unlike the examples add custom/modified functions below the r={...} so you can update these blocks easily! same for self={}
---7.1b: fcol/bcol for each line in listing, bugfix in textbox, added textbox (if works)
+--7.2b: fcol/bcol for each line in listing, bugfix in textbox, added textbox (if works)
+--7.3b: code changes to minimize lines and redundancy
 -- don't try textboxes input in lua-interactive, not working there
 
 ------ local functions
@@ -45,6 +45,34 @@ local function scrollText(o,direction)
     end
     g.update(o.getID())
 end
+
+local function create_self(x,y,rx,ry,fcol,bcol,scrollEvent,textflag,id,layer,coords,clickEvent,text,textLine)
+    return {["x"]=x,["y"]=y,["rx"]=rx,["ry"]=ry,["fcol"]=fcol,["bcol"]=bcol,["scrollEvent"]=nil,["textflag"]=nil,
+    ["id"]=randID(),["layer"]=layer,["coords"]=nil,["clickEvent"]=clickEvent,["text"]=nil,["textLine"]=1} --coords added in expansion, textflag==true --> last line printed
+end
+
+local function connect_functions(self,references,ref,update,updateCoords,show,cleanText)
+    local r={["getX"]=function() return self.x end,["getY"]=function() return self.y end,["getRX"]=function() return self.rx end,
+    ["getRY"]=function() return self.ry end,["remove"]=function(up) ref("remove",up) g.removeObject(self.id,up) self=nil end,["getID"]=function() return self.id end,
+    ["update"]=update,["changeLayer"]=function(layer) ref("move",0,0,layer-self.layer,true) g.changeLayer(self.id,layer,false) end,["getLayer"]=function() return self.layer end,
+    ["setLayer"]=function(layer) self.layer=layer end,["getCoords"]=function() return self.coords end,["move"]=function(rx,ry,layer,up) rx=rx or 0 ry=ry or 0 
+    layer=layer or 0 g.removeFromScreen(self.id,up) self.layer=self.layer+layer self.x=self.x+rx self.y=self.y+ry ref("move",rx,ry,layer,false) show(up) end,["resize"]=function(rx,ry,up) rx=rx or 0 
+    ry=ry or 0 g.removeFromScreen(self.id,false) self.rx=self.rx+rx self.ry=self.ry+ry ref("resize",rx,ry,true) show(up) end,["show"]=show,
+    ["toPosition"]=function(x,y,layer,up) x=x or self.x y=y or self.y layer=layer or self.layer g.removeFromScreen(self.id,up) local rx=x-self.x local ry=y-self.y layer=layer-self.layer self.layer=self.layer+layer self.x=self.x+rx self.y=self.y+ry ref("move",rx,ry,layer,false) show(up) end,
+    ["clickEvent"]=function(x,y,button,user,test) if test then if self.clickEvent~=nil then return true end return false end self.clickEvent(x,y,button,user) end,
+    ["setClickEvent"]=function(f) self.clickEvent=f end,["removeClickEvent"]=function() self.clickEvent=nil end,["cleanTextArea"]=cleanText,
+    ["setSize"]=function(rx,ry,up) rx=rx or self.rx ry=ry or self.ry ref("resize",rx-self.rx,ry-self.ry,true) self.rx=rx self.ry=ry show(up) end,
+    ["getFCol"]=function() return self.fcol end,["getBCol"]=function() return self.bcol end,["setFCol"]=function(col,up) self.fcol=col ref("setFCol",col,true) if not up then g.update(self.id,self.layer) end end,
+    ["setBCol"]=function(col,up) self.bcol=col ref("setBCol",col,true) if not up then g.update(self.id,self.layer) end end,["updateCoords"]=updateCoords,["getText"]=function() return self.text end,
+    ["setText"]=function(text,...) cleanText() self.text=text:format(...) g.update(self.id) end,["addReference"]=function(shape,...) references[#references+1]=g[shape](...) end,["getReferences"]=function() return references end,
+    ["scrollEvent"]=function(x,y,direction,user,test) if test then if self.scrollEvent~=nil then return true end return false end self.scrollEvent(x,y,direction,user) end,
+    ["setScrollEvent"]=function(f) self.scrollEvent=f end,["removeScrollEvent"]=function() self.scrollEvent=nil end,
+    ["getTextLine"]=function(flag) if flag then return self.textflag else return self.textLine end end,["setTextLine"]=function(line) self.textLine=line end}
+    for a,b in pairs(g.objectFunctions()) do
+        r[a]=b
+    end
+    return r
+end
 -------
 
 ------
@@ -56,8 +84,7 @@ function s.rect_full(x,y,rx,ry,layer,fcol,bcol,clickEvent,add)
     -- this part can be copied to any shape and expanded like below
     ------
     layer=layer or g.getHighestLayer()+1
-    local self={["x"]=x,["y"]=y,["rx"]=rx,["ry"]=ry,["fcol"]=fcol,["bcol"]=bcol,["scrollEvent"]=nil,["textflag"]=nil,
-    ["id"]=randID(),["layer"]=layer,["coords"]=nil,["clickEvent"]=clickEvent,["text"]=nil,["textLine"]=1} --coords added in expansion, textflag==true --> last line printed
+    local self=create_self(x,y,rx,ry,fcol,bcol,scrollEvent,textflag,id,layer,coords,clickEvent,text,textLine)
     
     local r
     local references={}
@@ -67,6 +94,7 @@ function s.rect_full(x,y,rx,ry,layer,fcol,bcol,clickEvent,add)
     local update --dynamic range update - only add function in function are if you use it --> highly suggested to be implemented
     local updateCoords --only add function in function area if you use it
     local show --always define this
+    local cleanText
     ------ 
     
     ------
@@ -86,25 +114,7 @@ function s.rect_full(x,y,rx,ry,layer,fcol,bcol,clickEvent,add)
         fill(x,y,rx,ry," ",self.bcol,nil) --no g.update here
     end
     --function table, copy to your new shape and modify/expand if needed
-    r={["getX"]=function() return self.x end,["getY"]=function() return self.y end,["getRX"]=function() return self.rx end,
-    ["getRY"]=function() return self.ry end,["remove"]=function(up) ref("remove",up) g.removeObject(self.id,up) self=nil end,["getID"]=function() return self.id end,
-    ["update"]=update,["changeLayer"]=function(layer) ref("move",0,0,layer-self.layer,true) g.changeLayer(self.id,layer,false) end,["getLayer"]=function() return self.layer end,
-    ["setLayer"]=function(layer) self.layer=layer end,["getCoords"]=function() return self.coords end,["move"]=function(rx,ry,layer,up) rx=rx or 0 ry=ry or 0 
-    layer=layer or 0 g.removeFromScreen(self.id,up) self.layer=self.layer+layer self.x=self.x+rx self.y=self.y+ry ref("move",rx,ry,layer,false) show(up) end,["resize"]=function(rx,ry,up) rx=rx or 0 
-    ry=ry or 0 g.removeFromScreen(self.id,false) self.rx=self.rx+rx self.ry=self.ry+ry ref("resize",rx,ry,true) show(up) end,["show"]=show,
-    ["toPosition"]=function(x,y,layer,up) x=x or self.x y=y or self.y layer=layer or self.layer g.removeFromScreen(self.id,up) local rx=x-self.x local ry=y-self.y layer=layer-self.layer self.layer=self.layer+layer self.x=self.x+rx self.y=self.y+ry ref("move",rx,ry,layer,false) show(up) end,
-    ["clickEvent"]=function(x,y,button,user,test) if test then if self.clickEvent~=nil then return true end return false end self.clickEvent(x,y,button,user) end,
-    ["setClickEvent"]=function(f) self.clickEvent=f end,["removeClickEvent"]=function() self.clickEvent=nil end,["cleanTextArea"]=cleanText,
-    ["setSize"]=function(rx,ry,up) rx=rx or self.rx ry=ry or self.ry ref("resize",rx-self.rx,ry-self.ry,true) self.rx=rx self.ry=ry show(up) end,
-    ["getFCol"]=function() return self.fcol end,["getBCol"]=function() return self.bcol end,["setFCol"]=function(col,up) self.fcol=col ref("setFCol",col,true) if not up then g.update(self.id,self.layer) end end,
-    ["setBCol"]=function(col,up) self.bcol=col ref("setBCol",col,true) if not up then g.update(self.id,self.layer) end end,["updateCoords"]=updateCoords,["getText"]=function() return self.text end,
-    ["setText"]=function(text,...) cleanText() self.text=text:format(...) g.update(self.id) end,["addReference"]=function(shape,...) references[#references+1]=g[shape](...) end,["getReferences"]=function() return references end,
-    ["scrollEvent"]=function(x,y,direction,user,test) if test then if self.scrollEvent~=nil then return true end return false end self.scrollEvent(x,y,direction,user) end,
-    ["setScrollEvent"]=function(f) self.scrollEvent=f end,["removeScrollEvent"]=function() self.scrollEvent=nil end,
-    ["getTextLine"]=function(flag) if flag then return self.textflag else return self.textLine end end,["setTextLine"]=function(line) self.textLine=line end}
-    for a,b in pairs(g.objectFunctions()) do
-        r[a]=b
-    end
+    r=connect_functions(self,references,ref,update,updateCoords,show,cleanText)
     r.getTextLine=nil r.setTextLine=nil r.setText=nil r.getText=nil r.cleanTextArea=nil--custom modification
     --
     g.addObject(r,add) --adds pointer to object functions for interaction with GUI
@@ -119,8 +129,7 @@ function s.label(x,y,rx,ry,layer,fcol,bcol,clickEvent,add,text,...) --maybe add 
     if text then
         text=text:format(...)
     end
-    local self={["x"]=x,["y"]=y,["rx"]=rx,["ry"]=ry,["fcol"]=fcol,["bcol"]=bcol,["scrollEvent"]=nil,["textflag"]=nil,
-    ["id"]=randID(),["layer"]=layer,["coords"]=nil,["clickEvent"]=clickEvent,["text"]=nil,["textLine"]=1} --coords added in expansion, textflag==true --> last line printed
+    local self=create_self(x,y,rx,ry,fcol,bcol,scrollEvent,textflag,id,layer,coords,clickEvent,text,textLine)
     self.text=text self.autoScroll=true self.textflag=nil
     
     local r
@@ -224,27 +233,7 @@ function s.label(x,y,rx,ry,layer,fcol,bcol,clickEvent,add,text,...) --maybe add 
     end
     -------
     --function table, copy to your new shape and modify/expand if needed
-    r={["getX"]=function() return self.x end,["getY"]=function() return self.y end,["getRX"]=function() return self.rx end,
-    ["getRY"]=function() return self.ry end,["remove"]=function(up) ref("remove",up) g.removeObject(self.id,up) self=nil end,["getID"]=function() return self.id end,
-    ["update"]=update,["changeLayer"]=function(layer) ref("move",0,0,layer-self.layer,true) g.changeLayer(self.id,layer,false) end,["getLayer"]=function() return self.layer end,
-    ["setLayer"]=function(layer) self.layer=layer end,["getCoords"]=function() return self.coords end,["move"]=function(rx,ry,layer,up) rx=rx or 0 ry=ry or 0 
-    layer=layer or 0 g.removeFromScreen(self.id,up) self.layer=self.layer+layer self.x=self.x+rx self.y=self.y+ry ref("move",rx,ry,layer,false) show(up) end,["resize"]=function(rx,ry,up) rx=rx or 0 
-    ry=ry or 0 g.removeFromScreen(self.id,false) self.rx=self.rx+rx self.ry=self.ry+ry ref("resize",rx,ry,true) show(up) end,["show"]=show,
-    ["toPosition"]=function(x,y,layer,up) x=x or self.x y=y or self.y layer=layer or self.layer g.removeFromScreen(self.id,up) local rx=x-self.x local ry=y-self.y layer=layer-self.layer self.layer=self.layer+layer self.x=self.x+rx self.y=self.y+ry ref("move",rx,ry,layer,false) show(up) end,
-    ["clickEvent"]=function(x,y,button,user,test) if test then if self.clickEvent~=nil then return true end return false end self.clickEvent(x,y,button,user) end,
-    ["setClickEvent"]=function(f) self.clickEvent=f end,["removeClickEvent"]=function() self.clickEvent=nil end,["cleanTextArea"]=cleanText,
-    ["setSize"]=function(rx,ry,up) rx=rx or self.rx ry=ry or self.ry ref("resize",rx-self.rx,ry-self.ry,true) self.rx=rx self.ry=ry show(up) end,
-    ["getFCol"]=function() return self.fcol end,["getBCol"]=function() return self.bcol end,["setFCol"]=function(col,up) self.fcol=col ref("setFCol",col,true) if not up then g.update(self.id,self.layer) end end,
-    ["setBCol"]=function(col,up) self.bcol=col ref("setBCol",col,true) if not up then g.update(self.id,self.layer) end end,["updateCoords"]=updateCoords,["getText"]=function() return self.text end, ["removeText"]=function() self.text=nil end,
-    ["setText"]=function(text,...) cleanText() self.text=text:format(...) g.update(self.id) end,["addReference"]=function(shape,...) references[#references+1]=g[shape](...) end,["getReferences"]=function() return references end,
-    ["scrollEvent"]=function(x,y,direction,user,test) if test then if self.scrollEvent~=nil then return true end return false end self.scrollEvent(x,y,direction,user) end,
-    ["setScrollEvent"]=function(f) self.scrollEvent=f end,["removeScrollEvent"]=function() self.scrollEvent=nil end,
-    ["getTextLine"]=function(flag) if flag then return self.textflag else return self.textLine end end,["setTextLine"]=function(line) self.textLine=line end}
-    r["setAutoScroll"]=function(i) if type(i)~="boolean" then return false,"parameter has to be boolean" end self.autoScroll=i end
-    r["debug"]=function() return self end
-    for a,b in pairs(g.objectFunctions()) do
-        r[a]=b
-    end
+    r=connect_functions(self,references,ref,update,updateCoords,show,cleanText)
     --
     g.addObject(r,add) --adds pointer to object functions for interaction with GUI
     return r
@@ -313,8 +302,7 @@ function s.listing(x,y,rx,ry,layer,fcol,bcol,clickEvent,add,text) --maybe add st
             return false,"wrong textarray format, must be table"
         end
     end
-    local self={["x"]=x,["y"]=y,["rx"]=rx,["ry"]=ry,["fcol"]=fcol,["bcol"]=bcol,["scrollEvent"]=nil,["textflag"]=nil,
-    ["id"]=randID(),["layer"]=layer,["coords"]=nil,["clickEvent"]=clickEvent,["text"]=nil,["textLine"]=1} --coords added in expansion, textflag==true --> last line printed
+    local self=create_self(x,y,rx,ry,fcol,bcol,scrollEvent,textflag,id,layer,coords,clickEvent,text,textLine)
     self["tltab"]={} self.fcol={[0]=fcol} self.bcol={[0]=bcol}
     self.text=text self.textlines=0 self.autoScroll=true 
     if text then for i=1,1000 do if text[i] then self.textlines=self.textlines+1 end end end
@@ -472,22 +460,7 @@ function s.listing(x,y,rx,ry,layer,fcol,bcol,clickEvent,add,text) --maybe add st
     end
     -------
     --function table, copy to your new shape and modify/expand if needed
-    r={["getX"]=function() return self.x end,["getY"]=function() return self.y end,["getRX"]=function() return self.rx end,
-    ["getRY"]=function() return self.ry end,["remove"]=function(up) ref("remove",up) g.removeObject(self.id,up) self=nil end,["getID"]=function() return self.id end,
-    ["update"]=update,["changeLayer"]=function(layer) ref("move",0,0,layer-self.layer,true) g.changeLayer(self.id,layer,false) end,["getLayer"]=function() return self.layer end,
-    ["setLayer"]=function(layer) self.layer=layer end,["getCoords"]=function() return self.coords end,["move"]=function(rx,ry,layer,up) rx=rx or 0 ry=ry or 0 
-    layer=layer or 0 g.removeFromScreen(self.id,up) self.layer=self.layer+layer self.x=self.x+rx self.y=self.y+ry ref("move",rx,ry,layer,false) show(up) end,["resize"]=function(rx,ry,up) rx=rx or 0 
-    ry=ry or 0 g.removeFromScreen(self.id,false) self.rx=self.rx+rx self.ry=self.ry+ry ref("resize",rx,ry,true) show(up) end,["show"]=show,
-    ["toPosition"]=function(x,y,layer,up) x=x or self.x y=y or self.y layer=layer or self.layer g.removeFromScreen(self.id,up) local rx=x-self.x local ry=y-self.y layer=layer-self.layer self.layer=self.layer+layer self.x=self.x+rx self.y=self.y+ry ref("move",rx,ry,layer,false) show(up) end,
-    ["clickEvent"]=function(x,y,button,user,test) if test then if self.clickEvent~=nil then return true end return false end self.clickEvent(x,y,button,user) end,
-    ["setClickEvent"]=function(f) self.clickEvent=f end,["removeClickEvent"]=function() self.clickEvent=nil end,["cleanTextArea"]=cleanText,
-    ["setSize"]=function(rx,ry,up) rx=rx or self.rx ry=ry or self.ry ref("resize",rx-self.rx,ry-self.ry,true) self.rx=rx self.ry=ry show(up) end,
-    ["getFCol"]=function() return self.fcol end,["getBCol"]=function() return self.bcol end,["setFCol"]=function(col,up) self.fcol=col ref("setFCol",col,true) if not up then g.update(self.id,self.layer) end end,
-    ["setBCol"]=function(col,up) self.bcol=col ref("setBCol",col,true) if not up then g.update(self.id,self.layer) end end,["updateCoords"]=updateCoords,["getText"]=function() return self.text end, ["removeText"]=function() self.text=nil end,
-    ["setText"]=function(text,...) cleanText() self.text=text:format(...) g.update(self.id) end,["addReference"]=function(shape,...) references[#references+1]=g[shape](...) end,["getReferences"]=function() return references end,
-    ["scrollEvent"]=function(x,y,direction,user,test) if test then if self.scrollEvent~=nil then return true end return false end self.scrollEvent(x,y,direction,user) end,
-    ["setScrollEvent"]=function(f) self.scrollEvent=f end,["removeScrollEvent"]=function() self.scrollEvent=nil end,
-    ["getTextLine"]=function(flag) if flag then return self.textflag else return self.textLine end end,["setTextLine"]=function(line) self.textLine=line end}
+    r=connect_functions(self,references,ref,update,updateCoords,show,cleanText)
     
     r["clickEvent"]=function(x,y,button,user,test) if test then if self.clickEvent~=nil then return true end return false end if self.tltab[y-self.y+1] and type(self.clickEvent)=="table" and self.clickEvent[self.tltab[y-self.y+1]] then self.clickEvent[self.tltab[y-self.y+1]](x,y,button,user) elseif type(self.clickEvent)=="function" then self.clickEvent(x,y,button,user) end end
     r["setClickEvent"]=function(f,line) if type(f)=="number" then return false,"function,line" end if not self.clickEvent then self.clickEvent={} end if line and type(self.clickEvent)=="table" then self.clickEvent[line]=f elseif line and type(self.clickEvent)=="function" then self.clickEvent={} self.clickEvent[line]=f elseif line then return false,"clickEvent={}" else self.clickEvent=f end end
