@@ -2,7 +2,7 @@
 
 This readme will get updated soon and a short wiki will follow...
 
-To use the API just drop the files GUI.lua and shapes_default.lua to your preffered lib folder e.g. /lib/
+To use the API just drop the files GUI.lua, shapes_default.lua and term_mod.lua to your preffered lib folder e.g. /lib/
 
 To see the tech_demo put the tech_demo.lua anywhere and run it (at the moment it does not demonstrate all features).
 
