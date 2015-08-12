@@ -310,7 +310,6 @@ end
 function g.initShapes(import,override) --function to import shape files located in /lib
     local i=require(import)
     i.init(g)
-    i.init=nil
     for a,b in pairs(i) do
         if g[a]~=nil and override~=true then
             print(a.." exists")
