@@ -462,7 +462,7 @@ function s.listing(x,y,rx,ry,layer,fcol,bcol,clickEvent,add,text) --maybe add st
     --function table, copy to your new shape and modify/expand if needed
     r=connect_functions(self,references,ref,update,updateCoords,show,cleanText)
     
-    r["clickEvent"]=function(x,y,button,user,test) if test then if self.clickEvent~=nil then return true end return false end if self.tltab[y-self.y+1] and type(self.clickEvent)=="table" and self.clickEvent[self.tltab[y-self.y+1]] then self.clickEvent[self.tltab[y-self.y+1]](x,y,button,user) elseif type(self.clickEvent)=="function" then self.clickEvent(x,y,button,user) end end
+    r["clickEvent"]=function(x,y,button,user,test) if test then if self.clickEvent~=nil then return true end return false end if self.tltab[y-self.y+1] and type(self.clickEvent)=="table" and self.clickEvent[self.tltab[y-self.y+1]] then self.clickEvent[self.tltab[y-self.y+1]](x,y,button,user,self.text[self.tltab[y-self.y+1]]) elseif type(self.clickEvent)=="function" then self.clickEvent(x,y,button,user,self.text) end end
     r["setClickEvent"]=function(f,line) if type(f)=="number" then return false,"function,line" end if not self.clickEvent then self.clickEvent={} end if line and type(self.clickEvent)=="table" then self.clickEvent[line]=f elseif line and type(self.clickEvent)=="function" then self.clickEvent={} self.clickEvent[line]=f elseif line then return false,"clickEvent={}" else self.clickEvent=f end end
     r["removeClickEvent"]=function(line) if line and type(self.clickEvent)=="table" then self.clickEvent[line]=nil else self.clickEvent=nil end end
     r["getText"]=function(i) if not i then return self.text end return self.text[i] end
@@ -473,10 +473,6 @@ function s.listing(x,y,rx,ry,layer,fcol,bcol,clickEvent,add,text) --maybe add st
     r["getFCol"]=function(i) i=i or 0 return self.fcol[i] end r["getBCol"]=function(i) i=i or 0 return self.bcol[i] end 
     r["setFCol"]=function(col,i,up) i=i or 0 self.fcol[i]=col if i==0 then ref("setFCol",col,true) end if not up then g.update(self.id,self.layer) end end
     r["setBCol"]=function(col,i,up) i=i or 0 self.bcol[i]=col if i==0 then ref("setBCol",col,true) end if not up then g.update(self.id,self.layer) end end
-    r["debug"]=function() return self end
-    for a,b in pairs(g.objectFunctions()) do
-        r[a]=b
-    end
     --
     g.addObject(r,up,add) --adds pointer to object functions for interaction with GUI
     return r
