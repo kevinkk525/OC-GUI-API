@@ -64,7 +64,7 @@ end
 
 local function opt_res() --uses screen perfectly, not working atm..
     local maxw,maxh=gpu.maxResolution()
-    local a_w,a_w=component.screen.getAspectRatio()
+    local a_w,a_h=component.screen.getAspectRatio()
     local h=1
     local w=1
     for i=maxh,1,-1 do
