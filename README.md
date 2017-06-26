@@ -1,6 +1,6 @@
 # OC-GUI-API
 
-This readme will get updated soon and a short wiki will follow...
+This prjoect won't get any updates, I'm sorry. If you think it is usefull, feel free to do with it as you wish.
 
 To use the API just drop the files GUI.lua, shapes_default.lua and term_mod.lua to your preffered lib folder e.g. /lib/
 
