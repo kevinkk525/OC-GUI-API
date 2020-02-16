@@ -1,5 +1,7 @@
 # OC-GUI-API
 
+Use [this](https://github.com/kevinkk525/GUI) GUI library
+
 This prjoect won't get any updates, I'm sorry. If you think it is usefull, feel free to do with it as you wish.
 
 To use the API just drop the files GUI.lua, shapes_default.lua and term_mod.lua to your preffered lib folder e.g. /lib/
